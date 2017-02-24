@@ -1,6 +1,6 @@
 # mruby-timer-thread   [![Build Status](https://travis-ci.org/matsumotory/mruby-timer-thread.svg?branch=master)](https://travis-ci.org/matsumotory/mruby-timer-thread)
 
-Timer Thread class
+Simple Timer Thread class
 
 ## install by mrbgems
 - add conf.gem line to `build_config.rb`
@@ -18,10 +18,10 @@ end
 timer_msec = 5000
 
 # 5sec timer
-th = TimerThread.new
-th.run timer_msec
+timer = TimerThread.new
+timer.run timer_msec
 
-while th.running? do
+while timer.running? do
   sleep 1
   puts "master thread sleeping loop"
 end
