@@ -11,7 +11,7 @@ assert("Timer#run") do
   th = TimerThread.new
   th.run timer_msec
 
-  while th.run? do
+  while th.running? do
     sleep 1
     puts "master thread sleeping loop"
   end

@@ -16,7 +16,7 @@ class TimerThread
     end
   end
 
-  def run?
+  def running?
     @timer_thread.alive?
   end
 end
