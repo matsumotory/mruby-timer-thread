@@ -14,6 +14,9 @@ MRuby::Build.new do |conf|
 end
 ```
 ## example
+
+- non blocking timer
+
 ```ruby
 timer_msec = 5000
 
@@ -27,6 +30,27 @@ while timer.running? do
 end
 
 puts "timer thread finish."
+```
+
+- blocking timer
+
+```ruby
+timer = TimerThread.new
+
+
+timer.run 3000
+
+puts "main thread sleeping..."
+
+sleep 1
+
+puts "waiting timer"
+
+timer.blocking_handler do
+  puts "finish timer"
+end
+
+puts "finish main thread"
 ```
 
 ## License

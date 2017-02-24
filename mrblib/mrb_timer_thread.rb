@@ -19,4 +19,9 @@ class TimerThread
   def running?
     @timer_thread.alive?
   end
+
+  def blocking_handler
+    @timer_thread.join
+    yield
+  end
 end
