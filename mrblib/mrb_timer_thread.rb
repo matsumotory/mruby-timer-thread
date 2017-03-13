@@ -24,7 +24,6 @@ class TimerThread
       while loop_time < timer * 1000
         loop_time += usleep interval
       end
-      trap sig, :SIG_DFL
       Process.kill sig, Process.pid
     end
   end
