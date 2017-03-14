@@ -8,4 +8,6 @@ MRuby::Gem::Specification.new('mruby-timer') do |spec|
   spec.add_test_dependency 'mruby-sleep'
   spec.add_test_dependency 'mruby-signal'
   spec.add_test_dependency 'mruby-process'
+
+  spec.linker.libraries << 'rt'
 end

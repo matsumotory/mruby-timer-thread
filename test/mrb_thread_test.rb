@@ -22,5 +22,5 @@ assert("MRubyThread#run") do
 
   finish = Time.now
 
-  assert_true (start - finish) < (timer_msec / 1000 + 2)
+  assert_true((start - finish) < (timer_msec / 1000 + 2))
 end

@@ -10,6 +10,11 @@ task :compile => :mruby do
   sh "cd mruby && rake all MRUBY_CONFIG=\"#{MRUBY_CONFIG}\""
 end
 
+desc "memtest"
+task :memtest => :compile do
+  sh %q<valgrind ./mruby/bin/mruby -e '100.times {t =  Timer::POSIX.new ; p t}'>
+end
+
 desc "test"
 task :test => :mruby do
   sh "cd mruby && rake all test MRUBY_CONFIG=\"#{MRUBY_CONFIG}\""
