@@ -2,13 +2,17 @@
 ## Timer Test
 ##
 
-assert("Timer#run") do
+assert("Timer module") do
+  assert_equal Module, Timer.class
+end
+
+assert("MRubyThread#run") do
   timer_msec = 5000
 
   start = Time.now
 
   # 5sec timer
-  th = TimerThread.new
+  th = Timer::MRubyThread.new
   th.run timer_msec
 
   while th.running? do
