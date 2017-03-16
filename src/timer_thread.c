@@ -7,6 +7,7 @@
 #include <mruby/variable.h>
 
 #include <errno.h>
+#include <math.h>
 #include <signal.h>
 #include <time.h>
 
@@ -48,7 +49,8 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
   return self;
 }
 
-static int mrb_set_itmerspec(mrb_int start, mrb_int interval, struct itimerspec *ts)
+static int mrb_set_itimerspec(mrb_int start, mrb_int start_nsec, mrb_int interval, mrb_int interval_nsec,
+                              struct itimerspec *ts)
 {
   if (start < 0 || interval < 0 || ts == NULL) {
     errno = EINVAL;
@@ -56,10 +58,10 @@ static int mrb_set_itmerspec(mrb_int start, mrb_int interval, struct itimerspec 
   }
 
   ts->it_value.tv_sec = (time_t)start;
-  ts->it_value.tv_nsec = 0L;
+  ts->it_value.tv_nsec = (long)start_nsec;
 
   ts->it_interval.tv_sec = (time_t)interval;
-  ts->it_interval.tv_nsec = 0L;
+  ts->it_interval.tv_nsec = (long)interval_nsec;
 
   return 0;
 }
@@ -74,7 +76,40 @@ static mrb_value mrb_timer_posix_start(mrb_state *mrb, mrb_value self)
     mrb_sys_fail(mrb, "mrb_get_args");
   }
 
-  if (mrb_set_itmerspec(start, interval, &ts) == -1) {
+  if (mrb_set_itimerspec(start, 0, interval, 0, &ts) == -1) {
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "Values must be 0 or positive");
+  }
+
+  if (timer_settime(*(data->timer_ptr), 0, &ts, NULL) == -1) {
+    mrb_sys_fail(mrb, "timer_settime");
+  }
+
+  return self;
+}
+
+static mrb_value mrb_timer_posix_start_hires(mrb_state *mrb, mrb_value self)
+{
+  mrb_timer_posix_data *data = DATA_PTR(self);
+  mrb_float start, interval = -1;
+  double tmp_i, tmp_d;
+  mrb_int s_sec, s_nsec, i_sec = 0, i_nsec = 0;
+  struct itimerspec ts;
+
+  if (mrb_get_args(mrb, "f|f", &start, &interval) == -1) {
+    mrb_sys_fail(mrb, "mrb_get_args");
+  }
+
+  tmp_d = modf((double)start, &tmp_i);
+  s_sec = (int)tmp_i;
+  s_nsec = (int)(tmp_d * 1000000000.0);
+
+  if (interval >= 0) {
+    tmp_d = modf((double)interval, &tmp_i);
+    i_sec = (int)tmp_i;
+    i_nsec = (int)(tmp_d * 1000000000.0);
+  }
+
+  if (mrb_set_itimerspec(s_sec, s_nsec, i_sec, i_nsec, &ts) == -1) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "Values must be 0 or positive");
   }
 
@@ -89,7 +124,7 @@ static mrb_value mrb_timer_posix_stop(mrb_state *mrb, mrb_value self)
 {
   mrb_timer_posix_data *data = DATA_PTR(self);
   struct itimerspec ts;
-  if (mrb_set_itmerspec(0, 0, &ts) == -1) {
+  if (mrb_set_itmerspec(0, 0, 0, 0, &ts) == -1) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "Invalid value for stop");
   }
 
@@ -130,6 +165,7 @@ void mrb_mruby_timer_gem_init(mrb_state *mrb)
   MRB_SET_INSTANCE_TT(posix, MRB_TT_DATA);
   mrb_define_method(mrb, posix, "initialize", mrb_timer_posix_init, MRB_ARGS_NONE());
   mrb_define_method(mrb, posix, "start", mrb_timer_posix_start, MRB_ARGS_ARG(1, 2));
+  mrb_define_method(mrb, posix, "start_hires", mrb_timer_posix_start_hires, MRB_ARGS_ARG(1, 2));
   mrb_define_method(mrb, posix, "stop", mrb_timer_posix_stop, MRB_ARGS_NONE());
   mrb_define_method(mrb, posix, "__status_raw", mrb_timer_posix_status_raw, MRB_ARGS_NONE());
 }
