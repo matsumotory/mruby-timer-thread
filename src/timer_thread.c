@@ -124,7 +124,7 @@ static mrb_value mrb_timer_posix_stop(mrb_state *mrb, mrb_value self)
 {
   mrb_timer_posix_data *data = DATA_PTR(self);
   struct itimerspec ts;
-  if (mrb_set_itmerspec(0, 0, 0, 0, &ts) == -1) {
+  if (mrb_set_itimerspec(0, 0, 0, 0, &ts) == -1) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "Invalid value for stop");
   }
 
