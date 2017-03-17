@@ -1,3 +1,5 @@
+#define _GNU_SOURCE 1
+
 #include <mruby.h>
 #include <mruby/array.h>
 #include <mruby/class.h>
@@ -7,6 +9,7 @@
 #include <mruby/variable.h>
 
 #include <errno.h>
+#include <limits.h>
 #include <math.h>
 #include <signal.h>
 #include <signal.h>
@@ -30,6 +33,20 @@ static void mrb_timer_posix_free(mrb_state *mrb, void *p)
 }
 
 static const struct mrb_data_type mrb_timer_posix_data_type = {"mrb_timer_posix_data", mrb_timer_posix_free};
+
+static mrb_value mrb_rtsignal_get(mrb_state *mrb, mrb_value self)
+{
+  mrb_int idx;
+  if (mrb_get_args(mrb, "i", &idx) == -1) {
+    mrb_sys_fail(mrb, "mrb_get_args");
+  }
+
+  if (SIGRTMIN + (int)idx > SIGRTMAX) {
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "RTSignal indx too large");
+  }
+
+  return mrb_fixnum_value(SIGRTMIN + (int)idx);
+}
 
 static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
 {
@@ -190,7 +207,10 @@ static mrb_value mrb_timer_posix_signo(mrb_state *mrb, mrb_value self)
 
 void mrb_mruby_timer_gem_init(mrb_state *mrb)
 {
-  struct RClass *timer, *posix;
+  struct RClass *rtsignal, *timer, *posix;
+  rtsignal = mrb_define_module(mrb, "RTSignal");
+  mrb_define_module_function(mrb, rtsignal, "get", mrb_rtsignal_get, MRB_ARGS_REQ(1));
+
   timer = mrb_define_module(mrb, "Timer");
 
   posix = mrb_define_class_under(mrb, timer, "POSIX", mrb->object_class);
