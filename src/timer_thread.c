@@ -8,6 +8,8 @@
 #include <mruby/hash.h>
 #include <mruby/variable.h>
 
+#include <stdio.h>
+
 #include <errno.h>
 #include <limits.h>
 #include <math.h>
@@ -48,16 +50,27 @@ static mrb_value mrb_rtsignal_get(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(SIGRTMIN + (int)idx);
 }
 
+static void rtsignal_action(int signo, siginfo_t *siginfo, void *_unused)
+{
+  mrb_state *mrb = (mrb_state *)siginfo->si_value.sival_ptr;
+  mrb_funcall(mrb, mrb_top_self(mrb), "puts", 1, mrb_str_new_lit(mrb, "From RTSignal!!1"));
+}
+
+#define rtsignal_p(s) (SIGRTMIN <= (s) && SIGRTMAX >= (s))
+
 static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
 {
   mrb_timer_posix_data *data;
   timer_t *timer_ptr;
   mrb_value options = mrb_nil_value();
+  mrb_value blk = mrb_nil_value();
 
   struct sigevent sev;
   sev.sigev_signo = 0;
 
-  if (mrb_get_args(mrb, "|o", &options) == -1) {
+  struct sigaction sact;
+
+  if (mrb_get_args(mrb, "|o&", &options, &blk) == -1) {
     mrb_sys_fail(mrb, "mrb_get_args");
   }
 
@@ -66,6 +79,17 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
     if (mrb_fixnum_p(signo)) {
       sev.sigev_notify = SIGEV_SIGNAL;
       sev.sigev_signo = (int)mrb_fixnum(signo);
+    }
+  }
+
+  if (rtsignal_p(sev.sigev_signo) && !mrb_nil_p(blk)) {
+    sev.sigev_value.sival_ptr = (void *)mrb;
+
+    sigemptyset(&sact.sa_mask);
+    sact.sa_flags = SA_SIGINFO;
+    sact.sa_sigaction = rtsignal_action;
+    if (sigaction(sev.sigev_signo, &sact, NULL) == -1) {
+      mrb_sys_fail(mrb, "sigaction for RTSignal");
     }
   }
 
@@ -215,7 +239,7 @@ void mrb_mruby_timer_gem_init(mrb_state *mrb)
 
   posix = mrb_define_class_under(mrb, timer, "POSIX", mrb->object_class);
   MRB_SET_INSTANCE_TT(posix, MRB_TT_DATA);
-  mrb_define_method(mrb, posix, "initialize", mrb_timer_posix_init, MRB_ARGS_ARG(0, 1));
+  mrb_define_method(mrb, posix, "initialize", mrb_timer_posix_init, MRB_ARGS_ARG(0, 2));
   mrb_define_method(mrb, posix, "start", mrb_timer_posix_start, MRB_ARGS_ARG(1, 1));
   mrb_define_method(mrb, posix, "start_hires", mrb_timer_posix_start_hires, MRB_ARGS_ARG(1, 1));
   mrb_define_method(mrb, posix, "stop", mrb_timer_posix_stop, MRB_ARGS_NONE());
