@@ -1,4 +1,5 @@
 MRuby::Gem::Specification.new('mruby-timer') do |spec|
+MRuby::Gem::Specification.new('mruby-timer-thread') do |spec|
   spec.license = 'MIT'
   spec.authors = 'MATSUMOTO Ryosuke'
   spec.add_dependency 'mruby-thread'
