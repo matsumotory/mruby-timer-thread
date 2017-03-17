@@ -13,7 +13,6 @@ assert("Timer#run") do
 
   while th.running? do
     sleep 1
-    puts "master thread sleeping loop"
   end
 
   finish = Time.now
