@@ -8,13 +8,12 @@
 #include <mruby/hash.h>
 #include <mruby/variable.h>
 
-#include <stdio.h>
-
 #include <errno.h>
 #include <limits.h>
 #include <math.h>
 #include <signal.h>
 #include <signal.h>
+#include <stdio.h>
 #include <time.h>
 
 #define DONE mrb_gc_arena_restore(mrb, 0);
@@ -50,10 +49,26 @@ static mrb_value mrb_rtsignal_get(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(SIGRTMIN + (int)idx);
 }
 
+static mrb_sym mrb_rtsignal_iv_key(mrb_state *mrb, int signo)
+{
+  char key[sizeof("__mrb_timer_trap_proc_") + 3];
+  if (snprintf(key, sizeof(key), "__mrb_timer_trap_proc_%d", signo) == -1) {
+    mrb_sys_fail(mrb, "snprintf");
+  }
+  return mrb_intern_cstr(mrb, key);
+}
+
 static void rtsignal_action(int signo, siginfo_t *siginfo, void *_unused)
 {
   mrb_state *mrb = (mrb_state *)siginfo->si_value.sival_ptr;
-  mrb_funcall(mrb, mrb_top_self(mrb), "puts", 1, mrb_str_new_lit(mrb, "From RTSignal!!1"));
+  mrb_value proc = mrb_iv_get(mrb, mrb_top_self(mrb), mrb_rtsignal_iv_key(mrb, signo));
+
+  if (mrb_nil_p(proc)) {
+    mrb_warn(mrb, "[!] Invalid call path to sigaction... Skip\n");
+    return;
+  }
+
+  mrb_funcall(mrb, proc, "call", 1, mrb_fixnum_value(signo));
 }
 
 #define rtsignal_p(s) (SIGRTMIN <= (s) && SIGRTMAX >= (s))
@@ -91,6 +106,8 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
     if (sigaction(sev.sigev_signo, &sact, NULL) == -1) {
       mrb_sys_fail(mrb, "sigaction for RTSignal");
     }
+
+    mrb_iv_set(mrb, mrb_top_self(mrb), mrb_rtsignal_iv_key(mrb, sev.sigev_signo), blk);
   }
 
   data = (mrb_timer_posix_data *)DATA_PTR(self);
