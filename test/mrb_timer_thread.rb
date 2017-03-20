@@ -28,12 +28,12 @@ assert("Timer#run_with_signal") do
     finish = Time.now
   end
 
-  timer = TimerThread.new
+  th = TimerThread.new
   start = Time.now
 
-  timer.run_with_signal timer_msec, :USR
+  th.run_with_signal timer_msec, :USR1
 
-  while timer.running? do
+  while th.running? do
     sleep 1
   end
   assert_true (start - finish) < (timer_msec / 1000 + 2)
