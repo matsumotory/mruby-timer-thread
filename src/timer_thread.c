@@ -155,44 +155,21 @@ static int mrb_set_itimerspec(mrb_int start, mrb_int start_nsec, mrb_int interva
 static mrb_value mrb_timer_posix_start(mrb_state *mrb, mrb_value self)
 {
   mrb_timer_posix_data *data = DATA_PTR(self);
-  mrb_int start, interval = 0;
+  mrb_int start, interval = -1;
+  mrb_int s_sec, s_nsec, i_sec = 0, i_nsec = 0;
   struct itimerspec ts;
 
+  /* start and interval should be msec */
   if (mrb_get_args(mrb, "i|i", &start, &interval) == -1) {
     mrb_sys_fail(mrb, "mrb_get_args");
   }
 
-  if (mrb_set_itimerspec(start, 0, interval, 0, &ts) == -1) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "Values must be 0 or positive");
-  }
-
-  if (timer_settime(*(data->timer_ptr), 0, &ts, NULL) == -1) {
-    mrb_sys_fail(mrb, "timer_settime");
-  }
-
-  return self;
-}
-
-static mrb_value mrb_timer_posix_start_hires(mrb_state *mrb, mrb_value self)
-{
-  mrb_timer_posix_data *data = DATA_PTR(self);
-  mrb_float start, interval = -1;
-  double tmp_i, tmp_d;
-  mrb_int s_sec, s_nsec, i_sec = 0, i_nsec = 0;
-  struct itimerspec ts;
-
-  if (mrb_get_args(mrb, "f|f", &start, &interval) == -1) {
-    mrb_sys_fail(mrb, "mrb_get_args");
-  }
-
-  tmp_d = modf((double)start, &tmp_i);
-  s_sec = (int)tmp_i;
-  s_nsec = (int)(tmp_d * 1000000000.0);
+  s_sec = (mrb_int)(start / 1000);
+  s_nsec = (start % 1000) * 1000000;
 
   if (interval >= 0) {
-    tmp_d = modf((double)interval, &tmp_i);
-    i_sec = (int)tmp_i;
-    i_nsec = (int)(tmp_d * 1000000000.0);
+    i_sec = (mrb_int)(interval / 1000);
+    i_nsec = (interval % 1000) * 1000000;
   }
 
   if (mrb_set_itimerspec(s_sec, s_nsec, i_sec, i_nsec, &ts) == -1) {
@@ -257,7 +234,6 @@ void mrb_mruby_timer_gem_init(mrb_state *mrb)
   MRB_SET_INSTANCE_TT(posix, MRB_TT_DATA);
   mrb_define_method(mrb, posix, "initialize", mrb_timer_posix_init, MRB_ARGS_ARG(0, 2));
   mrb_define_method(mrb, posix, "start", mrb_timer_posix_start, MRB_ARGS_ARG(1, 1));
-  mrb_define_method(mrb, posix, "start_hires", mrb_timer_posix_start_hires, MRB_ARGS_ARG(1, 1));
   mrb_define_method(mrb, posix, "stop", mrb_timer_posix_stop, MRB_ARGS_NONE());
   mrb_define_method(mrb, posix, "__status_raw", mrb_timer_posix_status_raw, MRB_ARGS_NONE());
 
