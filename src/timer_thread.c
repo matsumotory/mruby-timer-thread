@@ -12,7 +12,6 @@
 #include <limits.h>
 #include <math.h>
 #include <signal.h>
-#include <signal.h>
 #include <stdio.h>
 #include <time.h>
 
