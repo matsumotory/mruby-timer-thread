@@ -222,7 +222,7 @@ static mrb_value mrb_timer_posix_signo(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(data->timer_signo);
 }
 
-void mrb_mruby_timer_gem_init(mrb_state *mrb)
+void mrb_mruby_timer_thread_gem_init(mrb_state *mrb)
 {
   struct RClass *rtsignal, *timer, *posix;
   rtsignal = mrb_define_module(mrb, "RTSignal");
@@ -242,6 +242,6 @@ void mrb_mruby_timer_gem_init(mrb_state *mrb)
   DONE;
 }
 
-void mrb_mruby_timer_gem_final(mrb_state *mrb)
+void mrb_mruby_timer_thread_gem_final(mrb_state *mrb)
 {
 }

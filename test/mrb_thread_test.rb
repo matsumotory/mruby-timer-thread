@@ -17,10 +17,27 @@ assert("MRubyThread#run") do
 
   while th.running? do
     sleep 1
-    puts "master thread sleeping loop"
   end
 
   finish = Time.now
 
-  assert_true((start - finish) < (timer_msec / 1000 + 2))
+  assert_true (finish - start) > (timer_msec / 1000)
+end
+
+assert("Timer#run_with_signal") do
+  timer_msec = 5000
+  finish = nil
+
+  SignalThread.trap(:USR2) do
+    finish = Time.now
+  end
+
+  th = TimerThread.new
+  start = Time.now
+  th.run_with_signal timer_msec, :USR2
+
+  while th.running? do
+    sleep 1
+  end
+  assert_true (finish - start) > (timer_msec / 1000)
 end
