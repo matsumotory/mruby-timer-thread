@@ -17,10 +17,10 @@
 #include <stdlib.h>
 #include <time.h>
 
-/* OSX does not support POSIX Timer... */
-#ifdef timer_create
-
 #define DONE mrb_gc_arena_restore(mrb, 0);
+
+/* OSX does not support POSIX Timer... */
+#ifndef __APPLE__
 
 #define MRB_TIMER_POSIX_KEY_SIGNO mrb_intern_lit(mrb, "signal")
 
@@ -460,8 +460,19 @@ void mrb_mruby_timer_thread_gem_init(mrb_state *mrb)
 
 #else
 
+static mrb_value mrb_timer_posix_dummy_start(mrb_state *mrb, mrb_value self)
+{
+  mrb_raise(mrb, E_NOTIMP_ERROR, "Unsupported platform");
+  return mrb_nil_value();
+}
+
 void mrb_mruby_timer_thread_gem_init(mrb_state *mrb)
 {
+  struct RClass *timer, *posix;
+  timer = mrb_define_module(mrb, "Timer");
+  posix = mrb_define_class_under(mrb, timer, "POSIX", mrb->object_class);
+  mrb_define_method(mrb, posix, "start", mrb_timer_posix_dummy_start, MRB_ARGS_ANY());
+  DONE;
 }
 
 #endif

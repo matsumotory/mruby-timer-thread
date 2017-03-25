@@ -3,11 +3,11 @@ assert("Timer::POSIX.new") do
   assert_equal Timer::POSIX, t.class
 end
 
-if Timer::POSIX.methods.include?(:start)
-  assert("Timer::POSIX#run") do
-    timer_msec = 200
+assert("Timer::POSIX#run") do
+  timer_msec = 200
 
-    pt = Timer::POSIX.new(signal: nil)
+  pt = Timer::POSIX.new(signal: nil)
+  begin
     start = Time.now.to_i * 1000 + Time.now.usec / 1000
     pt.run timer_msec
 
@@ -16,15 +16,19 @@ if Timer::POSIX.methods.include?(:start)
     end
     finish = Time.now.to_i * 1000 + Time.now.usec / 1000
     assert_true (finish - start) > timer_msec
+  rescue NotImplementedError => e
+    assert_true "Unsupported platform", e.message
   end
+end
 
-  assert("Timer::POSIX with RTSignal, interval timer and block") do
-    timer_msec = 200
-    count = 0
+assert("Timer::POSIX with RTSignal, interval timer and block") do
+  timer_msec = 200
+  count = 0
 
-    pt = Timer::POSIX.new(signal: :SIGRT1) do
-      count += 1
-    end
+  pt = Timer::POSIX.new(signal: :SIGRT1) do
+    count += 1
+  end
+  begin
     start = Time.now.to_i * 1000 + Time.now.usec / 1000
     pt.run timer_msec, timer_msec
 
@@ -35,5 +39,7 @@ if Timer::POSIX.methods.include?(:start)
     pt.stop
 
     assert_true (finish - start) > timer_msec
+  rescue NotImplementedError => e
+    assert_true "Unsupported platform", e.message
   end
 end
