@@ -14,6 +14,7 @@
 #include <math.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 #define DONE mrb_gc_arena_restore(mrb, 0);
@@ -165,6 +166,17 @@ static int signm2signo(const char *nm)
   for (sigs = siglist; sigs->signm; sigs++) {
     if (strcmp(sigs->signm, nm) == 0)
       return sigs->signo;
+  }
+
+  /* Handle RT Signal#0 as special for strtol's err spec */
+  if (strcmp("RT0", nm) == 0)
+    return SIGRTMIN;
+
+  if (strncmp("RT", nm, 2) == 0) {
+    int ret = (int)strtol(nm + 2, NULL, 0);
+    if (!ret || (SIGRTMIN + ret > SIGRTMAX))
+      return 0;
+    return SIGRTMIN + ret;
   }
   return 0;
 }

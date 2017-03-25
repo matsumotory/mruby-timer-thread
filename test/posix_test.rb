@@ -18,11 +18,10 @@ assert("Timer::POSIX#run") do
 end
 
 assert("Timer::POSIX with RTSignal, interval timer and block") do
-  SIGRT1 = RTSignal.get(1)
   timer_msec = 200
   count = 0
 
-  pt = Timer::POSIX.new(signal: SIGRT1) do
+  pt = Timer::POSIX.new(signal: :SIGRT1) do
     count += 1
   end
   start = Time.now.to_i * 1000 + Time.now.usec / 1000
