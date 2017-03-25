@@ -216,6 +216,17 @@ static mrb_value mrb_timer_posix_status_raw(mrb_state *mrb, mrb_value self)
   return ret;
 }
 
+static mrb_value mrb_timer_posix_is_running(mrb_state *mrb, mrb_value self)
+{
+  mrb_timer_posix_data *data = DATA_PTR(self);
+  struct itimerspec ts;
+
+  if (timer_gettime(*(data->timer_ptr), &ts) == -1) {
+    mrb_sys_fail(mrb, "timer_gettime");
+  }
+  return mrb_bool_value(ts.it_value.tv_sec || ts.it_value.tv_nsec);
+}
+
 static mrb_value mrb_timer_posix_signo(mrb_state *mrb, mrb_value self)
 {
   mrb_timer_posix_data *data = DATA_PTR(self);
@@ -236,6 +247,7 @@ void mrb_mruby_timer_thread_gem_init(mrb_state *mrb)
   mrb_define_method(mrb, posix, "start", mrb_timer_posix_start, MRB_ARGS_ARG(1, 1));
   mrb_define_method(mrb, posix, "stop", mrb_timer_posix_stop, MRB_ARGS_NONE());
   mrb_define_method(mrb, posix, "__status_raw", mrb_timer_posix_status_raw, MRB_ARGS_NONE());
+  mrb_define_method(mrb, posix, "running?", mrb_timer_posix_is_running, MRB_ARGS_NONE());
 
   mrb_define_method(mrb, posix, "signo", mrb_timer_posix_signo, MRB_ARGS_NONE());
 
