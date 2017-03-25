@@ -6,8 +6,8 @@ assert("Timer module") do
   assert_equal Module, Timer.class
 end
 
-assert("MRubyThread#run") do
-  timer_msec = 5000
+assert("Timer::MRubyThread#run") do
+  timer_msec = 2000
 
   start = Time.now
 
@@ -24,15 +24,15 @@ assert("MRubyThread#run") do
   assert_true (finish - start) > (timer_msec / 1000)
 end
 
-assert("Timer#run_with_signal") do
-  timer_msec = 5000
+assert("Timer::MRubyThread#run_with_signal") do
+  timer_msec = 2000
   finish = nil
 
   SignalThread.trap(:USR2) do
     finish = Time.now
   end
 
-  th = TimerThread.new
+  th = Timer::MRubyThread.new
   start = Time.now
   th.run_with_signal timer_msec, :USR2
 

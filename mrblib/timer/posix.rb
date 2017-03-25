@@ -1,5 +1,7 @@
 module Timer
   class POSIX
+    alias run start
+
     def interval?
       s = __status_raw
       s["interval.sec"] != 0 || s["interval.nsec"] != 0

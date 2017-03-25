@@ -80,7 +80,7 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
   mrb_value blk = mrb_nil_value();
 
   struct sigevent sev;
-  sev.sigev_signo = 0;
+  sev.sigev_signo = -1;
 
   struct sigaction sact;
 
@@ -93,6 +93,11 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
     if (mrb_fixnum_p(signo)) {
       sev.sigev_notify = SIGEV_SIGNAL;
       sev.sigev_signo = (int)mrb_fixnum(signo);
+    } else if (mrb_nil_p(signo)) {
+      sev.sigev_notify = SIGEV_NONE;
+      sev.sigev_signo = 0; /* mark as active */
+    } else {
+      mrb_raise(mrb, E_ARGUMENT_ERROR, "Invalid value for signal (note that Symbol or String unsuppoerted yet)");
     }
   }
 
@@ -119,7 +124,7 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
   data = (mrb_timer_posix_data *)mrb_malloc(mrb, sizeof(mrb_timer_posix_data));
   timer_ptr = (timer_t *)mrb_malloc(mrb, sizeof(timer_t));
 
-  if (sev.sigev_signo == 0) {
+  if (sev.sigev_signo < 0) {
     if (timer_create(CLOCK_REALTIME, NULL, timer_ptr) == -1) {
       mrb_sys_fail(mrb, "timer_create failed");
     }
