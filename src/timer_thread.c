@@ -6,6 +6,7 @@
 #include <mruby/data.h>
 #include <mruby/error.h>
 #include <mruby/hash.h>
+#include <mruby/string.h>
 #include <mruby/variable.h>
 
 #include <errno.h>
@@ -18,6 +19,187 @@
 #define DONE mrb_gc_arena_restore(mrb, 0);
 
 #define MRB_TIMER_POSIX_KEY_SIGNO mrb_intern_lit(mrb, "signal")
+
+/* thanks: https://github.com/ksss/mruby-signal/blob/master/src/signal.c */
+static const struct signals {
+  const char *signm;
+  int signo;
+} siglist[] = {{"EXIT", 0},
+#ifdef SIGHUP
+               {"HUP", SIGHUP},
+#endif
+               {"INT", SIGINT},
+#ifdef SIGQUIT
+               {"QUIT", SIGQUIT},
+#endif
+#ifdef SIGILL
+               {"ILL", SIGILL},
+#endif
+#ifdef SIGTRAP
+               {"TRAP", SIGTRAP},
+#endif
+#ifdef SIGABRT
+               {"ABRT", SIGABRT},
+#endif
+#ifdef SIGIOT
+               {"IOT", SIGIOT},
+#endif
+#ifdef SIGEMT
+               {"EMT", SIGEMT},
+#endif
+#ifdef SIGFPE
+               {"FPE", SIGFPE},
+#endif
+#ifdef SIGKILL
+               {"KILL", SIGKILL},
+#endif
+#ifdef SIGBUS
+               {"BUS", SIGBUS},
+#endif
+#ifdef SIGSEGV
+               {"SEGV", SIGSEGV},
+#endif
+#ifdef SIGSYS
+               {"SYS", SIGSYS},
+#endif
+#ifdef SIGPIPE
+               {"PIPE", SIGPIPE},
+#endif
+#ifdef SIGALRM
+               {"ALRM", SIGALRM},
+#endif
+#ifdef SIGTERM
+               {"TERM", SIGTERM},
+#endif
+#ifdef SIGURG
+               {"URG", SIGURG},
+#endif
+#ifdef SIGSTOP
+               {"STOP", SIGSTOP},
+#endif
+#ifdef SIGTSTP
+               {"TSTP", SIGTSTP},
+#endif
+#ifdef SIGCONT
+               {"CONT", SIGCONT},
+#endif
+#ifdef SIGCHLD
+               {"CHLD", SIGCHLD},
+#endif
+#ifdef SIGCLD
+               {"CLD", SIGCLD},
+#else
+#ifdef SIGCHLD
+               {"CLD", SIGCHLD},
+#endif
+#endif
+#ifdef SIGTTIN
+               {"TTIN", SIGTTIN},
+#endif
+#ifdef SIGTTOU
+               {"TTOU", SIGTTOU},
+#endif
+#ifdef SIGIO
+               {"IO", SIGIO},
+#endif
+#ifdef SIGXCPU
+               {"XCPU", SIGXCPU},
+#endif
+#ifdef SIGXFSZ
+               {"XFSZ", SIGXFSZ},
+#endif
+#ifdef SIGVTALRM
+               {"VTALRM", SIGVTALRM},
+#endif
+#ifdef SIGPROF
+               {"PROF", SIGPROF},
+#endif
+#ifdef SIGWINCH
+               {"WINCH", SIGWINCH},
+#endif
+#ifdef SIGUSR1
+               {"USR1", SIGUSR1},
+#endif
+#ifdef SIGUSR2
+               {"USR2", SIGUSR2},
+#endif
+#ifdef SIGLOST
+               {"LOST", SIGLOST},
+#endif
+#ifdef SIGMSG
+               {"MSG", SIGMSG},
+#endif
+#ifdef SIGPWR
+               {"PWR", SIGPWR},
+#endif
+#ifdef SIGPOLL
+               {"POLL", SIGPOLL},
+#endif
+#ifdef SIGDANGER
+               {"DANGER", SIGDANGER},
+#endif
+#ifdef SIGMIGRATE
+               {"MIGRATE", SIGMIGRATE},
+#endif
+#ifdef SIGPRE
+               {"PRE", SIGPRE},
+#endif
+#ifdef SIGGRANT
+               {"GRANT", SIGGRANT},
+#endif
+#ifdef SIGRETRACT
+               {"RETRACT", SIGRETRACT},
+#endif
+#ifdef SIGSOUND
+               {"SOUND", SIGSOUND},
+#endif
+#ifdef SIGINFO
+               {"INFO", SIGINFO},
+#endif
+               {NULL, 0}};
+
+static int signm2signo(const char *nm)
+{
+  const struct signals *sigs;
+
+  for (sigs = siglist; sigs->signm; sigs++) {
+    if (strcmp(sigs->signm, nm) == 0)
+      return sigs->signo;
+  }
+  return 0;
+}
+
+static int mrb_to_signo(mrb_state *mrb, mrb_value vsig)
+{
+  int sig = -1;
+  const char *s;
+
+  switch (mrb_type(vsig)) {
+  case MRB_TT_FIXNUM:
+    sig = mrb_fixnum(vsig);
+    if (sig < 0 || sig >= SIGRTMAX) {
+      mrb_raisef(mrb, E_ARGUMENT_ERROR, "invalid signal number (%S)", vsig);
+    }
+    break;
+  case MRB_TT_SYMBOL:
+    s = mrb_sym2name(mrb, mrb_symbol(vsig));
+    if (!s)
+      mrb_raise(mrb, E_ARGUMENT_ERROR, "bad signal");
+    goto str_signal;
+  default:
+    vsig = mrb_string_type(mrb, vsig);
+    s = RSTRING_PTR(vsig);
+
+  str_signal:
+    if (memcmp("SIG", s, 3) == 0)
+      s += 3;
+    sig = signm2signo(s);
+    if (sig == 0 && strcmp(s, "EXIT") != 0)
+      mrb_raise(mrb, E_ARGUMENT_ERROR, "unsupported signal");
+    break;
+  }
+  return sig;
+}
 
 typedef struct {
   timer_t *timer_ptr;
@@ -90,14 +272,16 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
 
   if (!mrb_nil_p(options)) {
     mrb_value signo = mrb_hash_get(mrb, options, mrb_symbol_value(MRB_TIMER_POSIX_KEY_SIGNO));
-    if (mrb_fixnum_p(signo)) {
-      sev.sigev_notify = SIGEV_SIGNAL;
-      sev.sigev_signo = (int)mrb_fixnum(signo);
-    } else if (mrb_nil_p(signo)) {
+    if (mrb_nil_p(signo)) {
       sev.sigev_notify = SIGEV_NONE;
       sev.sigev_signo = 0; /* mark as active */
     } else {
-      mrb_raise(mrb, E_ARGUMENT_ERROR, "Invalid value for signal (note that Symbol or String unsuppoerted yet)");
+      int sno = mrb_to_signo(mrb, signo);
+      if (sno <= 0) {
+        mrb_raise(mrb, E_ARGUMENT_ERROR, "Invalid value for signal");
+      }
+      sev.sigev_notify = SIGEV_SIGNAL;
+      sev.sigev_signo = sno;
     }
   }
 
