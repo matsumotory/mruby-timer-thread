@@ -16,3 +16,23 @@ assert("Timer::POSIX#run") do
   finish = Time.now.to_i * 1000 + Time.now.usec / 1000
   assert_true (finish - start) > timer_msec
 end
+
+assert("Timer::POSIX with RTSignal, interval timer and block") do
+  SIGRT1 = RTSignal.get(1)
+  timer_msec = 200
+  count = 0
+
+  pt = Timer::POSIX.new(signal: SIGRT1) do
+    count += 1
+  end
+  start = Time.now.to_i * 1000 + Time.now.usec / 1000
+  pt.run timer_msec, timer_msec
+
+  while count < 4 do
+    usleep 1000
+  end
+  finish = Time.now.to_i * 1000 + Time.now.usec / 1000
+  pt.stop
+
+  assert_true (finish - start) > timer_msec
+end
