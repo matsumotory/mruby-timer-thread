@@ -4,7 +4,7 @@ assert("Timer::POSIX.new") do
 end
 
 assert("Timer::POSIX#run") do
-  timer_msec = 500
+  timer_msec = 200
 
   pt = Timer::POSIX.new(signal: nil)
   start = Time.now.to_i * 1000 + Time.now.usec / 1000
