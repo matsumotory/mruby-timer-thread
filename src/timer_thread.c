@@ -17,6 +17,9 @@
 #include <stdlib.h>
 #include <time.h>
 
+/* OSX does not support POSIX Timer... */
+#ifdef timer_create
+
 #define DONE mrb_gc_arena_restore(mrb, 0);
 
 #define MRB_TIMER_POSIX_KEY_SIGNO mrb_intern_lit(mrb, "signal")
@@ -454,6 +457,14 @@ void mrb_mruby_timer_thread_gem_init(mrb_state *mrb)
 
   DONE;
 }
+
+#else
+
+void mrb_mruby_timer_thread_gem_init(mrb_state *mrb)
+{
+}
+
+#endif
 
 void mrb_mruby_timer_thread_gem_final(mrb_state *mrb)
 {
