@@ -235,7 +235,7 @@ static mrb_value mrb_rtsignal_get(mrb_state *mrb, mrb_value self)
 {
   mrb_int idx;
   if (mrb_get_args(mrb, "i", &idx) == -1) {
-    mrb_sys_fail(mrb, "mrb_get_args");
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Cannot get arguments");
   }
 
   if (SIGRTMIN + (int)idx > SIGRTMAX) {
@@ -245,6 +245,7 @@ static mrb_value mrb_rtsignal_get(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(SIGRTMIN + (int)idx);
 }
 
+/* initialize */
 static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
 {
   mrb_timer_posix_data *data;
@@ -255,7 +256,7 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
   sev.sigev_signo = -1;
 
   if (mrb_get_args(mrb, "|o", &options) == -1) {
-    mrb_sys_fail(mrb, "mrb_get_args");
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Cannot get arguments");
   }
 
   if (!mrb_nil_p(options)) {
@@ -325,7 +326,7 @@ static mrb_value mrb_timer_posix_start(mrb_state *mrb, mrb_value self)
 
   /* start and interval should be msec */
   if (mrb_get_args(mrb, "i|i", &start, &interval) == -1) {
-    mrb_sys_fail(mrb, "mrb_get_args");
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Cannot get arguments");
   }
 
   s_sec = (mrb_int)(start / 1000);
@@ -366,12 +367,13 @@ static mrb_value mrb_timer_posix_status_raw(mrb_state *mrb, mrb_value self)
 {
   mrb_timer_posix_data *data = DATA_PTR(self);
   struct itimerspec ts;
+  mrb_value ret;
 
   if (timer_gettime(*(data->timer_ptr), &ts) == -1) {
     mrb_sys_fail(mrb, "timer_gettime");
   }
 
-  mrb_value ret = mrb_hash_new_capa(mrb, 2);
+  ret = mrb_hash_new_capa(mrb, 2);
   mrb_hash_set(mrb, ret, mrb_str_new_lit(mrb, "value.sec"), mrb_fixnum_value((mrb_int)ts.it_value.tv_sec));
   mrb_hash_set(mrb, ret, mrb_str_new_lit(mrb, "value.nsec"), mrb_fixnum_value((mrb_int)ts.it_value.tv_nsec));
   mrb_hash_set(mrb, ret, mrb_str_new_lit(mrb, "interval.sec"), mrb_fixnum_value((mrb_int)ts.it_interval.tv_sec));
