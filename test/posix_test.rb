@@ -3,6 +3,20 @@ assert("Timer::POSIX.new") do
   assert_equal Timer::POSIX, t.class
 end
 
+assert("Timer::POSIX#signo") do
+  t = Timer::POSIX.new()
+  # SIGALRM = 14
+  assert_equal 14, t.signo
+
+  t = Timer::POSIX.new(signal: :INT)
+  # SIGINT = 2
+  assert_equal 2, t.signo
+
+  t = Timer::POSIX.new(signal: nil)
+  # No send signal
+  assert_nil t.signo
+end
+
 assert("Timer::POSIX#run") do
   timer_msec = 200
 

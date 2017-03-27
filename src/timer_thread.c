@@ -288,13 +288,15 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
     if (timer_create(CLOCK_REALTIME, NULL, timer_ptr) == -1) {
       mrb_sys_fail(mrb, "timer_create failed");
     }
+    data->timer_ptr = timer_ptr;
+    data->timer_signo = SIGALRM; /* default */
   } else {
     if (timer_create(CLOCK_REALTIME, &sev, timer_ptr) == -1) {
       mrb_sys_fail(mrb, "timer_create failed");
     }
+    data->timer_ptr = timer_ptr;
+    data->timer_signo = sev.sigev_signo;
   }
-  data->timer_ptr = timer_ptr;
-  data->timer_signo = sev.sigev_signo;
 
   DATA_PTR(self) = data;
   return self;
@@ -396,7 +398,12 @@ static mrb_value mrb_timer_posix_is_running(mrb_state *mrb, mrb_value self)
 static mrb_value mrb_timer_posix_signo(mrb_state *mrb, mrb_value self)
 {
   mrb_timer_posix_data *data = DATA_PTR(self);
-  return mrb_fixnum_value(data->timer_signo);
+  int signo = data->timer_signo;
+  if (signo > 0) {
+    return mrb_fixnum_value(data->timer_signo);
+  } else {
+    return mrb_nil_value();
+  }
 }
 
 void mrb_mruby_timer_thread_gem_init(mrb_state *mrb)
