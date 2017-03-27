@@ -15,6 +15,12 @@ module Timer
       s["value.sec"] + s["value.nsec"] / 1_000_000_000.0
     end
 
+    def inspect
+      "#<Timer::POSIX signo=#{self.signo}, running=#{self.running?}, interval timer=#{self.interval?}>"
+    rescue
+      "#<Timer::POSIX !not available on this platform>"
+    end
+
     alias run start
   end
 end
