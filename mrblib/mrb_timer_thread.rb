@@ -43,3 +43,7 @@ class TimerThread
     yield
   end
 end
+
+module Timer
+  MRubyThread = TimerThread
+end
