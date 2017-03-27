@@ -12,7 +12,7 @@ end
 
 desc "memtest"
 task :memtest => :compile do
-  sh %q<valgrind ./mruby/bin/mruby -e '100.times {t =  Timer::POSIX.new ; p t}'>
+  sh %q<valgrind ./mruby/bin/mruby -e '100.times {t = Timer::POSIX.new(signal: nil) ; t.start 100, 100}'>
 end
 
 desc "test"

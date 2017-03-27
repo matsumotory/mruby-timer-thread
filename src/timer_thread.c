@@ -253,6 +253,7 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
   mrb_value options = mrb_nil_value();
 
   struct sigevent sev;
+  memset(&sev, 0, sizeof(struct sigevent));
   sev.sigev_signo = -1;
 
   if (mrb_get_args(mrb, "|o", &options) == -1) {
