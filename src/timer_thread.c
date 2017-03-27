@@ -245,43 +245,16 @@ static mrb_value mrb_rtsignal_get(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(SIGRTMIN + (int)idx);
 }
 
-static mrb_sym mrb_rtsignal_iv_key(mrb_state *mrb, int signo)
-{
-  char key[sizeof("__mrb_timer_trap_proc_") + 3];
-  if (snprintf(key, sizeof(key), "__mrb_timer_trap_proc_%d", signo) == -1) {
-    mrb_sys_fail(mrb, "snprintf");
-  }
-  return mrb_intern_cstr(mrb, key);
-}
-
-static void rtsignal_action(int signo, siginfo_t *siginfo, void *_unused)
-{
-  mrb_state *mrb = (mrb_state *)siginfo->si_value.sival_ptr;
-  mrb_value proc = mrb_iv_get(mrb, mrb_top_self(mrb), mrb_rtsignal_iv_key(mrb, signo));
-
-  if (mrb_nil_p(proc)) {
-    mrb_warn(mrb, "[!] Invalid call path to sigaction... Skip\n");
-    return;
-  }
-
-  mrb_funcall(mrb, proc, "call", 1, mrb_fixnum_value(signo));
-}
-
-#define rtsignal_p(s) (SIGRTMIN <= (s) && SIGRTMAX >= (s))
-
 static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
 {
   mrb_timer_posix_data *data;
   timer_t *timer_ptr;
   mrb_value options = mrb_nil_value();
-  mrb_value blk = mrb_nil_value();
 
   struct sigevent sev;
   sev.sigev_signo = -1;
 
-  struct sigaction sact;
-
-  if (mrb_get_args(mrb, "|o&", &options, &blk) == -1) {
+  if (mrb_get_args(mrb, "|o", &options) == -1) {
     mrb_sys_fail(mrb, "mrb_get_args");
   }
 
@@ -298,19 +271,6 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
       sev.sigev_notify = SIGEV_SIGNAL;
       sev.sigev_signo = sno;
     }
-  }
-
-  if (rtsignal_p(sev.sigev_signo) && !mrb_nil_p(blk)) {
-    sev.sigev_value.sival_ptr = (void *)mrb;
-
-    sigemptyset(&sact.sa_mask);
-    sact.sa_flags = SA_SIGINFO;
-    sact.sa_sigaction = rtsignal_action;
-    if (sigaction(sev.sigev_signo, &sact, NULL) == -1) {
-      mrb_sys_fail(mrb, "sigaction for RTSignal");
-    }
-
-    mrb_iv_set(mrb, mrb_top_self(mrb), mrb_rtsignal_iv_key(mrb, sev.sigev_signo), blk);
   }
 
   data = (mrb_timer_posix_data *)DATA_PTR(self);
@@ -447,7 +407,7 @@ void mrb_mruby_timer_thread_gem_init(mrb_state *mrb)
 
   posix = mrb_define_class_under(mrb, timer, "POSIX", mrb->object_class);
   MRB_SET_INSTANCE_TT(posix, MRB_TT_DATA);
-  mrb_define_method(mrb, posix, "initialize", mrb_timer_posix_init, MRB_ARGS_ARG(0, 2));
+  mrb_define_method(mrb, posix, "initialize", mrb_timer_posix_init, MRB_ARGS_ARG(0, 1));
   mrb_define_method(mrb, posix, "start", mrb_timer_posix_start, MRB_ARGS_ARG(1, 1));
   mrb_define_method(mrb, posix, "stop", mrb_timer_posix_stop, MRB_ARGS_NONE());
   mrb_define_method(mrb, posix, "__status_raw", mrb_timer_posix_status_raw, MRB_ARGS_NONE());
