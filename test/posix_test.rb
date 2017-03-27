@@ -17,6 +17,18 @@ assert("Timer::POSIX#signo") do
   assert_nil t.signo
 end
 
+assert("Timer::POSIX#interval?") do
+  t = Timer::POSIX.new(signal: nil)
+  t.run 3000
+  assert_true !t.interval?
+  t.stop
+
+  t = Timer::POSIX.new(signal: nil)
+  t.run 3000, 3000
+  assert_true t.interval?
+  t.stop
+end
+
 assert("Timer::POSIX#run") do
   timer_msec = 200
 
