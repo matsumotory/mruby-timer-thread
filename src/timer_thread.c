@@ -167,18 +167,21 @@ static int signm2signo(const char *nm)
   const struct signals *sigs;
 
   for (sigs = siglist; sigs->signm; sigs++) {
-    if (strcmp(sigs->signm, nm) == 0)
+    if (strcmp(sigs->signm, nm) == 0) {
       return sigs->signo;
+    }
   }
 
   /* Handle RT Signal#0 as special for strtol's err spec */
-  if (strcmp("RT0", nm) == 0)
+  if (strcmp("RT0", nm) == 0) {
     return SIGRTMIN;
+  }
 
   if (strncmp("RT", nm, 2) == 0) {
     int ret = (int)strtol(nm + 2, NULL, 0);
-    if (!ret || (SIGRTMIN + ret > SIGRTMAX))
+    if (!ret || (SIGRTMIN + ret > SIGRTMAX)) {
       return 0;
+    }
     return SIGRTMIN + ret;
   }
   return 0;
@@ -198,19 +201,22 @@ static int mrb_to_signo(mrb_state *mrb, mrb_value vsig)
     break;
   case MRB_TT_SYMBOL:
     s = mrb_sym2name(mrb, mrb_symbol(vsig));
-    if (!s)
+    if (!s) {
       mrb_raise(mrb, E_ARGUMENT_ERROR, "bad signal");
+    }
     goto str_signal;
   default:
     vsig = mrb_string_type(mrb, vsig);
     s = RSTRING_PTR(vsig);
 
   str_signal:
-    if (memcmp("SIG", s, 3) == 0)
+    if (memcmp("SIG", s, 3) == 0) {
       s += 3;
+    }
     sig = signm2signo(s);
-    if (sig == 0 && strcmp(s, "EXIT") != 0)
+    if (sig == 0 && strcmp(s, "EXIT") != 0) {
       mrb_raise(mrb, E_ARGUMENT_ERROR, "unsupported signal");
+    }
     break;
   }
   return sig;
@@ -276,8 +282,9 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
   }
 
   data = (mrb_timer_posix_data *)DATA_PTR(self);
-  if (data)
+  if (data) {
     mrb_timer_posix_free(mrb, data);
+  }
 
   DATA_TYPE(self) = &mrb_timer_posix_data_type;
   DATA_PTR(self) = NULL;
