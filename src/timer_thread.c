@@ -22,8 +22,6 @@
 /* OSX does not support POSIX Timer... */
 #ifndef __APPLE__
 
-#define MRB_TIMER_POSIX_KEY_SIGNO mrb_intern_lit(mrb, "signal")
-
 /* thanks: https://github.com/ksss/mruby-signal/blob/master/src/signal.c */
 static const struct signals {
   const char *signm;
@@ -225,6 +223,7 @@ static int mrb_to_signo(mrb_state *mrb, mrb_value vsig)
 typedef struct {
   timer_t *timer_ptr;
   int timer_signo;
+  clock_t clockid;
 } mrb_timer_posix_data;
 
 static void mrb_timer_posix_free(mrb_state *mrb, void *p)
@@ -251,12 +250,17 @@ static mrb_value mrb_rtsignal_get(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(SIGRTMIN + (int)idx);
 }
 
+#define MRB_TIMER_POSIX_KEY_SIGNO mrb_intern_lit(mrb, "signal")
+#define MRB_TIMER_POSIX_KEY_CLOCK_ID mrb_intern_lit(mrb, "clock_id")
+
 /* initialize */
 static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
 {
   mrb_timer_posix_data *data;
   timer_t *timer_ptr;
   mrb_value options = mrb_nil_value();
+  mrb_value has_signo_key, signo, clock_arg;
+  clockid_t clockid = CLOCK_REALTIME;
 
   struct sigevent sev;
   memset(&sev, 0, sizeof(struct sigevent));
@@ -266,18 +270,29 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_RUNTIME_ERROR, "Cannot get arguments");
   }
 
-  if (!mrb_nil_p(options)) {
-    mrb_value signo = mrb_hash_get(mrb, options, mrb_symbol_value(MRB_TIMER_POSIX_KEY_SIGNO));
-    if (mrb_nil_p(signo)) {
-      sev.sigev_notify = SIGEV_NONE;
-      sev.sigev_signo = 0; /* mark as active */
-    } else {
-      int sno = mrb_to_signo(mrb, signo);
-      if (sno <= 0) {
-        mrb_raise(mrb, E_ARGUMENT_ERROR, "Invalid value for signal");
+  /* Parse options as hash */
+  if (mrb_hash_p(options)) {
+    has_signo_key = mrb_funcall(mrb, options, "has_key?", 1, mrb_symbol_value(MRB_TIMER_POSIX_KEY_SIGNO));
+    if (mrb_bool(has_signo_key)) {
+      signo = mrb_hash_get(mrb, options, mrb_symbol_value(MRB_TIMER_POSIX_KEY_SIGNO));
+      /* handles nil as special... */
+      if (mrb_nil_p(signo)) {
+        sev.sigev_notify = SIGEV_NONE;
+        sev.sigev_signo = 0; /* mark as active */
+      } else {
+        int sno = mrb_to_signo(mrb, signo);
+        if (sno <= 0) {
+          mrb_raise(mrb, E_ARGUMENT_ERROR, "Invalid value for signal");
+        }
+        sev.sigev_notify = SIGEV_SIGNAL;
+        sev.sigev_signo = sno;
       }
-      sev.sigev_notify = SIGEV_SIGNAL;
-      sev.sigev_signo = sno;
+    }
+
+    clock_arg = mrb_hash_get(mrb, options, mrb_symbol_value(MRB_TIMER_POSIX_KEY_CLOCK_ID));
+    /* has key and is not nil */
+    if (mrb_fixnum_p(clock_arg)) {
+      clockid = (clockid_t)mrb_fixnum(clock_arg);
     }
   }
 
@@ -293,18 +308,19 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
   timer_ptr = (timer_t *)mrb_malloc(mrb, sizeof(timer_t));
 
   if (sev.sigev_signo < 0) {
-    if (timer_create(CLOCK_REALTIME, NULL, timer_ptr) == -1) {
+    if (timer_create(clockid, NULL, timer_ptr) == -1) {
       mrb_sys_fail(mrb, "timer_create failed");
     }
     data->timer_ptr = timer_ptr;
     data->timer_signo = SIGALRM; /* default */
   } else {
-    if (timer_create(CLOCK_REALTIME, &sev, timer_ptr) == -1) {
+    if (timer_create(clockid, &sev, timer_ptr) == -1) {
       mrb_sys_fail(mrb, "timer_create failed");
     }
     data->timer_ptr = timer_ptr;
     data->timer_signo = sev.sigev_signo;
   }
+  data->clockid = clockid;
 
   DATA_PTR(self) = data;
   return self;
@@ -414,6 +430,14 @@ static mrb_value mrb_timer_posix_signo(mrb_state *mrb, mrb_value self)
   }
 }
 
+static mrb_value mrb_timer_posix_clockid(mrb_state *mrb, mrb_value self)
+{
+  mrb_timer_posix_data *data = DATA_PTR(self);
+  return mrb_fixnum_value((int)data->clockid);
+}
+
+#define EXPORT_CLOCK_CONST(name) mrb_define_const(mrb, timer, #name, mrb_fixnum_value(name))
+
 void mrb_mruby_timer_thread_gem_init(mrb_state *mrb)
 {
   struct RClass *rtsignal, *timer, *posix;
@@ -431,6 +455,19 @@ void mrb_mruby_timer_thread_gem_init(mrb_state *mrb)
   mrb_define_method(mrb, posix, "running?", mrb_timer_posix_is_running, MRB_ARGS_NONE());
 
   mrb_define_method(mrb, posix, "signo", mrb_timer_posix_signo, MRB_ARGS_NONE());
+  mrb_define_method(mrb, posix, "clock_id", mrb_timer_posix_clockid, MRB_ARGS_NONE());
+
+  EXPORT_CLOCK_CONST(CLOCK_REALTIME);
+  EXPORT_CLOCK_CONST(CLOCK_MONOTONIC);
+  EXPORT_CLOCK_CONST(CLOCK_PROCESS_CPUTIME_ID);
+  EXPORT_CLOCK_CONST(CLOCK_THREAD_CPUTIME_ID);
+  EXPORT_CLOCK_CONST(CLOCK_BOOTTIME);
+#ifdef CLOCK_REALTIME_ALARM
+  EXPORT_CLOCK_CONST(CLOCK_REALTIME_ALARM);
+#endif
+#ifdef CLOCK_BOOTTIME_ALARM
+  EXPORT_CLOCK_CONST(CLOCK_BOOTTIME_ALARM);
+#endif
 
   DONE;
 }

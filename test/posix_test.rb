@@ -3,18 +3,31 @@ assert("Timer::POSIX.new") do
   assert_equal Timer::POSIX, t.class
 end
 
-assert("Timer::POSIX#signo") do
+assert("Timer::POSIX#signo, #clock_id") do
   t = Timer::POSIX.new()
   # SIGALRM = 14
   assert_equal 14, t.signo
+  assert_equal Timer::CLOCK_REALTIME, t.clock_id
 
   t = Timer::POSIX.new(signal: :INT)
   # SIGINT = 2
   assert_equal 2, t.signo
+  assert_equal Timer::CLOCK_REALTIME, t.clock_id
+
+  t = Timer::POSIX.new(signal: :RT3, clock_id: Timer::CLOCK_MONOTONIC)
+  # SIGRTMIN+3
+  assert_equal RTSignal.get(3), t.signo
+  assert_equal Timer::CLOCK_MONOTONIC, t.clock_id
+
+  t = Timer::POSIX.new(clock_id: Timer::CLOCK_MONOTONIC)
+  # SIGALRM = 14 default if option clock_id exists
+  assert_equal 14, t.signo
+  assert_equal Timer::CLOCK_MONOTONIC, t.clock_id
 
   t = Timer::POSIX.new(signal: nil)
   # No send signal
   assert_nil t.signo
+  assert_equal Timer::CLOCK_REALTIME, t.clock_id
 end
 
 assert("Timer::POSIX#interval?") do
