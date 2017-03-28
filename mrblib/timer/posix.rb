@@ -16,7 +16,7 @@ module Timer
     end
 
     def inspect
-      "#<Timer::POSIX signo=#{self.signo}, running=#{self.running?}, interval timer=#{self.interval?}>"
+      "#<Timer::POSIX signo=#{self.signo.inspect}, clock_id=#{self.clock_id}, running=#{self.running?}, interval timer=#{self.interval?}>"
     rescue
       "#<Timer::POSIX !not available on this platform>"
     end
