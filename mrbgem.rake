@@ -9,6 +9,7 @@ MRuby::Gem::Specification.new('mruby-timer-thread') do |spec|
   spec.add_test_dependency 'mruby-sleep'
   spec.add_test_dependency 'mruby-process'
   spec.add_test_dependency 'mruby-time'
+  spec.add_test_dependency 'mruby-print'
 
   if RUBY_PLATFORM !~ /darwin/
     spec.linker.libraries << 'rt'

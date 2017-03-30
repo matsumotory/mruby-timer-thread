@@ -21,11 +21,11 @@ class TimerThread
     end
   end
 
-  def run_with_signal msec_timer, signal
+  def run_with_signal msec_timer, signal, tid
     sigstr = signal.to_s
     sig = Proc.new do
       timer_proc(msec_timer).call
-      Process.kill sigstr, Process.pid
+      SignalThread.kill_by_tid tid, sigstr
     end
 
     # thread attach another mrb_state, so need msec_timer arg

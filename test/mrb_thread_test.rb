@@ -27,16 +27,18 @@ assert("Timer::MRubyThread#run_with_signal") do
   timer_msec = 500
   finish = nil
 
-  SignalThread.trap(:USR2) do
+  sth = SignalThread.trap(:USR2) do
     finish = Time.now.to_i * 1000 + Time.now.usec / 1000
   end
 
   th = Timer::MRubyThread.new
   start = Time.now.to_i * 1000 + Time.now.usec / 1000
-  th.run_with_signal timer_msec, :USR2
+
+  th.run_with_signal timer_msec, :USR2, sth.tid
 
   while th.running? do
     usleep 1000
   end
+  sleep 1
   assert_true (finish - start) > timer_msec
 end
