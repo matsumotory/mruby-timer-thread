@@ -360,6 +360,8 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
   data->clockid = clockid;
   if (param) {
     data->thread_param_ptr = param;
+  } else {
+    data->thread_param_ptr = NULL;
   }
 
   DATA_PTR(self) = data;
