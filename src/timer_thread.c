@@ -314,7 +314,7 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
       clockid = (clockid_t)mrb_fixnum(clock_arg);
     }
 
-#ifdef SIGEV_THREAD_ID
+#ifdef SIGEV_THREAD
     tid_arg = mrb_hash_get(mrb, options, mrb_symbol_value(MRB_TIMER_POSIX_KEY_TID));
     /* has key and is not nil */
     if (mrb_float_p(tid_arg)) {
