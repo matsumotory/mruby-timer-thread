@@ -1,5 +1,4 @@
 assert("Timer::POSIX with RTSignal, interval timer and block") do
-  #def assert_equal(*a); p a; end
   timer_msec = 10
   sem = false
   v1 = 0
