@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <math.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -220,10 +221,16 @@ static int mrb_to_signo(mrb_state *mrb, mrb_value vsig)
   return sig;
 }
 
+struct mrb_timer_posix_thread_param {
+  int signo;
+  pthread_t tid;
+};
+
 typedef struct {
   timer_t *timer_ptr;
   int timer_signo;
   clock_t clockid;
+  struct mrb_timer_posix_thread_param *thread_param_ptr;
 } mrb_timer_posix_data;
 
 static void mrb_timer_posix_free(mrb_state *mrb, void *p)
@@ -231,6 +238,9 @@ static void mrb_timer_posix_free(mrb_state *mrb, void *p)
   mrb_timer_posix_data *data = (mrb_timer_posix_data *)p;
   timer_delete(*data->timer_ptr);
   mrb_free(mrb, data->timer_ptr);
+  if (data->thread_param_ptr) {
+    mrb_free(mrb, data->thread_param_ptr);
+  }
   mrb_free(mrb, data);
 }
 
@@ -250,8 +260,15 @@ static mrb_value mrb_rtsignal_get(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(SIGRTMIN + (int)idx);
 }
 
+static void mrb_timer_posix_thread_func(union sigval sv)
+{
+  struct mrb_timer_posix_thread_param *param = (struct mrb_timer_posix_thread_param *)(sv.sival_ptr);
+  pthread_kill(param->tid, param->signo);
+}
+
 #define MRB_TIMER_POSIX_KEY_SIGNO mrb_intern_lit(mrb, "signal")
 #define MRB_TIMER_POSIX_KEY_CLOCK_ID mrb_intern_lit(mrb, "clock_id")
+#define MRB_TIMER_POSIX_KEY_TID mrb_intern_lit(mrb, "tid")
 
 /* initialize */
 static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
@@ -259,8 +276,10 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
   mrb_timer_posix_data *data;
   timer_t *timer_ptr;
   mrb_value options = mrb_nil_value();
-  mrb_value has_signo_key, signo, clock_arg;
+  mrb_value has_signo_key, signo, clock_arg, tid_arg;
   clockid_t clockid = CLOCK_REALTIME;
+  pthread_t tid;
+  struct mrb_timer_posix_thread_param *param = NULL;
 
   struct sigevent sev;
   memset(&sev, 0, sizeof(struct sigevent));
@@ -294,6 +313,24 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
     if (mrb_fixnum_p(clock_arg)) {
       clockid = (clockid_t)mrb_fixnum(clock_arg);
     }
+
+#ifdef SIGEV_THREAD
+    tid_arg = mrb_hash_get(mrb, options, mrb_symbol_value(MRB_TIMER_POSIX_KEY_TID));
+    /* has key and is not nil */
+    if (mrb_float_p(tid_arg)) {
+      tid = (pthread_t)mrb_float(tid_arg);
+      param = mrb_malloc(mrb, sizeof(struct mrb_timer_posix_thread_param));
+      param->tid = tid;
+      param->signo = sev.sigev_signo;
+      if (param->signo == -1) { /* By default handling */
+        param->signo = SIGALRM;
+      }
+
+      sev.sigev_notify = SIGEV_THREAD;
+      sev.sigev_value.sival_ptr = (void *)param;
+      sev.sigev_notify_function = mrb_timer_posix_thread_func;
+    }
+#endif
   }
 
   data = (mrb_timer_posix_data *)DATA_PTR(self);
@@ -321,6 +358,11 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
     data->timer_signo = sev.sigev_signo;
   }
   data->clockid = clockid;
+  if (param) {
+    data->thread_param_ptr = param;
+  } else {
+    data->thread_param_ptr = NULL;
+  }
 
   DATA_PTR(self) = data;
   return self;
