@@ -34,7 +34,7 @@ assert("Timer::MRubyThread#run_with_signal") do
   th = Timer::MRubyThread.new
   start = Time.now.to_i * 1000 + Time.now.usec / 1000
 
-  th.run_with_signal timer_msec, :USR2, sth.tid
+  th.run_with_signal timer_msec, :USR2, sth.thread_id
 
   while th.running? do
     usleep 1000

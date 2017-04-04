@@ -223,7 +223,7 @@ static int mrb_to_signo(mrb_state *mrb, mrb_value vsig)
 
 struct mrb_timer_posix_thread_param {
   int signo;
-  pthread_t tid;
+  pthread_t thread_id;
 };
 
 typedef struct {
@@ -263,12 +263,12 @@ static mrb_value mrb_rtsignal_get(mrb_state *mrb, mrb_value self)
 static void mrb_timer_posix_thread_func(union sigval sv)
 {
   struct mrb_timer_posix_thread_param *param = (struct mrb_timer_posix_thread_param *)(sv.sival_ptr);
-  pthread_kill(param->tid, param->signo);
+  pthread_kill(param->thread_id, param->signo);
 }
 
 #define MRB_TIMER_POSIX_KEY_SIGNO mrb_intern_lit(mrb, "signal")
 #define MRB_TIMER_POSIX_KEY_CLOCK_ID mrb_intern_lit(mrb, "clock_id")
-#define MRB_TIMER_POSIX_KEY_TID mrb_intern_lit(mrb, "tid")
+#define MRB_TIMER_POSIX_KEY_THREAD_ID mrb_intern_lit(mrb, "thread_id")
 
 /* initialize */
 static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
@@ -276,9 +276,9 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
   mrb_timer_posix_data *data;
   timer_t *timer_ptr;
   mrb_value options = mrb_nil_value();
-  mrb_value has_signo_key, signo, clock_arg, tid_arg;
+  mrb_value has_signo_key, signo, clock_arg, thread_id_arg;
   clockid_t clockid = CLOCK_REALTIME;
-  pthread_t tid;
+  pthread_t thread_id;
   struct mrb_timer_posix_thread_param *param = NULL;
 
   struct sigevent sev;
@@ -315,12 +315,12 @@ static mrb_value mrb_timer_posix_init(mrb_state *mrb, mrb_value self)
     }
 
 #ifdef SIGEV_THREAD
-    tid_arg = mrb_hash_get(mrb, options, mrb_symbol_value(MRB_TIMER_POSIX_KEY_TID));
+    thread_id_arg = mrb_hash_get(mrb, options, mrb_symbol_value(MRB_TIMER_POSIX_KEY_THREAD_ID));
     /* has key and is not nil */
-    if (mrb_float_p(tid_arg)) {
-      tid = (pthread_t)mrb_float(tid_arg);
+    if (mrb_float_p(thread_id_arg)) {
+      thread_id = (pthread_t)mrb_float(thread_id_arg);
       param = mrb_malloc(mrb, sizeof(struct mrb_timer_posix_thread_param));
-      param->tid = tid;
+      param->thread_id = thread_id;
       param->signo = sev.sigev_signo;
       if (param->signo == -1) { /* By default handling */
         param->signo = SIGALRM;
