@@ -8,7 +8,7 @@ assert("Timer::POSIX with RTSignal, interval timer and block") do
   t2 = SignalThread.trap(:RT5) { v2 += 1; sem = true }
 
   begin
-    Timer::POSIX.new(tid: t2.tid, signal: :RT5).run(timer_msec)
+    Timer::POSIX.new(thread_id: t2.thread_id, signal: :RT5).run(timer_msec)
     until sem
       usleep 1000 rescue nil
     end
@@ -16,7 +16,7 @@ assert("Timer::POSIX with RTSignal, interval timer and block") do
     assert_equal 1, v2
     sem = false
 
-    Timer::POSIX.new(tid: t1.tid, signal: :RT5).run(timer_msec)
+    Timer::POSIX.new(thread_id: t1.thread_id, signal: :RT5).run(timer_msec)
     until sem
       usleep 1000 rescue nil
     end
