@@ -50,8 +50,9 @@ assert("Timer::POSIX#run") do
     start = Time.now.to_i * 1000 + Time.now.usec / 1000
     pt.run timer_msec
 
-    while pt.running? do
-      usleep 1000
+    300.times do
+      break if !pt.running?
+      usleep 10 * 1000
     end
     finish = Time.now.to_i * 1000 + Time.now.usec / 1000
     assert_true (finish - start) > timer_msec
@@ -72,13 +73,15 @@ assert("Timer::POSIX#run in parallel") do
     usleep gap_msec * 1000 # 100 msec
     pt2.run timer_msec
 
-    while pt1.running? do
-      usleep 1000
+    300.times do
+      break unless pt1.running?
+      usleep 10 * 1000
     end
     assert_true !pt1.running? && pt2.running?
 
-    while pt2.running? do
-      usleep 1000
+    300.times do
+      break unless pt2.running?
+      usleep 10 * 1000
     end
     finish = Time.now.to_i * 1000 + Time.now.usec / 1000
     assert_true (finish - start) > (timer_msec + gap_msec)
@@ -99,8 +102,9 @@ assert("Timer::POSIX#run in many parallel") do
       usleep gap_msec * 1000 unless i == 9
     end
 
-    while pts.any? {|pt| pt.running? } do
-      usleep 1000
+    300.times do
+      break if pts.all? {|pt| ! pt.running? }
+      usleep 10 * 1000
     end
 
     finish = Time.now.to_i * 1000 + Time.now.usec / 1000
@@ -123,8 +127,9 @@ assert("Timer::POSIX with RTSignal, interval timer and block") do
 
     # Wait until first timer kicked & interval timers invoked 3 times...
     # Block will be called total 4 times
-    while count < 4 do
-      usleep 1000
+    300.times do
+      break if count >= 4
+      usleep 10 * 1000
     end
     finish = Time.now.to_i * 1000 + Time.now.usec / 1000
     pt.stop
