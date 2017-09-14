@@ -110,29 +110,29 @@ assert("Timer::POSIX#run in many parallel") do
   end
 end
 
-assert("Timer::POSIX with RTSignal, interval timer and block") do
-  timer_msec = 200
-  count = 0
+# assert("Timer::POSIX with RTSignal, interval timer and block") do
+#   timer_msec = 200
+#   count = 0
 
-  SignalThread.trap(:SIGRT2) { count += 1 }
-  pt = Timer::POSIX.new(signal: :SIGRT2)
+#   SignalThread.trap(:SIGRT2) { count += 1 }
+#   pt = Timer::POSIX.new(signal: :SIGRT2)
 
-  begin
-    start = Time.now.to_i * 1000 + Time.now.usec / 1000
-    pt.run timer_msec, timer_msec
+#   begin
+#     start = Time.now.to_i * 1000 + Time.now.usec / 1000
+#     pt.run timer_msec, timer_msec
 
-    # Wait until first timer kicked & interval timers invoked 3 times...
-    # Block will be called total 4 times
-    while count < 4 do
-      usleep 1000
-    end
-    finish = Time.now.to_i * 1000 + Time.now.usec / 1000
-    pt.stop
+#     # Wait until first timer kicked & interval timers invoked 3 times...
+#     # Block will be called total 4 times
+#     while count < 4 do
+#       usleep 1000
+#     end
+#     finish = Time.now.to_i * 1000 + Time.now.usec / 1000
+#     pt.stop
 
-    assert_true count >= 4
-    assert_true (finish - start) > timer_msec
-  rescue NotImplementedError => e
-    # In an unsupported platform (MacOS)
-    assert_equal "Unsupported platform", e.message
-  end
-end
+#     assert_true count >= 4
+#     assert_true (finish - start) > timer_msec
+#   rescue NotImplementedError => e
+#     # In an unsupported platform (MacOS)
+#     assert_equal "Unsupported platform", e.message
+#   end
+# end
