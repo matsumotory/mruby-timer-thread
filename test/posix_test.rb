@@ -65,7 +65,7 @@ assert("Timer::POSIX#run") do
 end
 
 assert("Timer::POSIX#run in parallel") do
-  timer_msec = 200
+  timer_msec = 50
   gap_msec = 100
 
   pt1 = Timer::POSIX.new(signal: nil)
