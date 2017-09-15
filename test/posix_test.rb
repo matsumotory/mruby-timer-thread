@@ -121,7 +121,7 @@ assert("Timer::POSIX#run in many parallel") do
 end
 
 assert("Timer::POSIX with RTSignal, interval timer and block") do
-  timer_msec = 200
+  timer_msec = 50
   count = 0
 
   SignalThread.trap(:SIGRT2) { count += 1 }
@@ -143,8 +143,8 @@ assert("Timer::POSIX with RTSignal, interval timer and block") do
     finish = Time.now.to_i * 1000 + Time.now.usec / 1000
     pt.stop
 
-    assert_true count >= 4
-    assert_true (finish - start) > timer_msec
+    assert_true count >= 4, "Accept interval timer by 4"
+    assert_true((finish - start) > (timer_msec * 4), "Wait OK")
   rescue NotImplementedError => e
     # In an unsupported platform (MacOS)
     assert_equal "Unsupported platform", e.message
