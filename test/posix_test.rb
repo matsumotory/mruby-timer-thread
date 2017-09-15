@@ -50,8 +50,12 @@ assert("Timer::POSIX#run") do
     start = Time.now.to_i * 1000 + Time.now.usec / 1000
     pt.run timer_msec
 
-    while pt.running? do
-      usleep 1000
+    500.times do
+      if pt.running?
+        usleep 1000
+        next
+      end
+      break
     end
     finish = Time.now.to_i * 1000 + Time.now.usec / 1000
     assert_true (finish - start) > timer_msec
@@ -72,16 +76,18 @@ assert("Timer::POSIX#run in parallel") do
     usleep gap_msec * 1000 # 100 msec
     pt2.run timer_msec
 
-    while pt1.running? do
-      usleep 1000
-    end
-    assert_true !pt1.running? && pt2.running?
+    assert_true !pt1.running? && pt2.running?, "Thread#1 should halt first"
 
-    while pt2.running? do
-      usleep 1000
+    500.times do
+      if pt2.running?
+        usleep 1000
+        next
+      end
+      break
     end
     finish = Time.now.to_i * 1000 + Time.now.usec / 1000
-    assert_true (finish - start) > (timer_msec + gap_msec)
+    assert_false pt2.running?, "Thread should be stopped"
+    assert_true((finish - start) > (timer_msec + gap_msec), "Wait")
   rescue NotImplementedError => e
     assert_true "Unsupported platform", e.message
   end
@@ -99,8 +105,12 @@ assert("Timer::POSIX#run in many parallel") do
       usleep gap_msec * 1000 unless i == 9
     end
 
-    while pts.any? {|pt| pt.running? } do
-      usleep 1000
+    500.times do
+      if pts.any? {|pt| pt.running? }
+        usleep 1000
+        next
+      end
+      break
     end
 
     finish = Time.now.to_i * 1000 + Time.now.usec / 1000
@@ -123,8 +133,12 @@ assert("Timer::POSIX with RTSignal, interval timer and block") do
 
     # Wait until first timer kicked & interval timers invoked 3 times...
     # Block will be called total 4 times
-    while count < 4 do
-      usleep 1000
+    500.times do
+      if count < 4
+        usleep 1000
+        next
+      end
+      break
     end
     finish = Time.now.to_i * 1000 + Time.now.usec / 1000
     pt.stop
