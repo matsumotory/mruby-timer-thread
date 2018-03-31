@@ -112,9 +112,9 @@ end
 
 assert("Timer::POSIX with RTSignal, interval timer and block") do
   timer_msec = 200
-  count = 0
+  q = Queue.new
 
-  SignalThread.trap(:SIGRT2) { count += 1 }
+  tr = SignalThread.trap(:SIGRT2) { q.push 1 }
   pt = Timer::POSIX.new(signal: :SIGRT2)
 
   begin
@@ -123,13 +123,14 @@ assert("Timer::POSIX with RTSignal, interval timer and block") do
 
     # Wait until first timer kicked & interval timers invoked 3 times...
     # Block will be called total 4 times
-    while count < 4 do
+    while q.size < 4 do
       usleep 1000
     end
     finish = Time.now.to_i * 1000 + Time.now.usec / 1000
     pt.stop
 
-    assert_true count >= 4
+    assert_true tr.alive?
+    assert_true q.size >= 4
     assert_true (finish - start) > timer_msec
   rescue NotImplementedError => e
     # In an unsupported platform (MacOS)
